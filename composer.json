@@ -1,0 +1,48 @@
+{
+    "name": "digitalnatives/craft3-illuminate-redis-adapter",
+    "description": "Redis Cache based on Illuminate redis for CraftCMS 3",
+    "keywords": [
+        "craft",
+        "cms",
+        "craftcms",
+        "cache",
+        "redis",
+        "adapter"
+    ],
+    "license": "MIT",
+    "homepage": "https://digitalnatives.nl",
+    "type": "library",
+    "support": {
+        "email": "hello@digitalnatives.nl",
+        "issues": "https://github.com/DN-Amsterdam/craft3-illuminate-redis-adapter/issues",
+        "source": "https://github.com/DN-Amsterdam/craft3-illuminate-redis-adapter/"
+    },
+    "require": {
+        "php": ">=7.4.0",
+        "illuminate/redis": "^8.0",
+        "craftcms/cms": "^3.0"
+    },
+    "require-dev": {
+        "ext-redis": "^4.0|^5.0",
+        "predis/predis": "^1.1.9",
+        "phpstan/phpstan": "^1.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "DigitalNatives\\": "src"
+        }
+    },
+    "suggest": {
+        "ext-redis": "Required to use the phpredis connector (^4.0|^5.0).",
+        "predis/predis": "Required to use the predis connector (^1.1.9)."
+    },
+    "config": {
+        "allow-plugins": {
+            "yiisoft/yii2-composer": false,
+            "craftcms/plugin-installer": false
+        }
+    },
+    "scripts": {
+        "phpstan": "@php ./vendor/bin/phpstan analyse"
+    }
+}
