@@ -19,6 +19,7 @@ class Redis extends Cache
     private const COMMAND_GET = 'GET';
     private const COMMAND_MGET = 'MGET';
     private const COMMAND_MSET = 'MSET';
+    private const COMMAND_MSETNX = 'MSETNX';
     private const COMMAND_DEL = 'DEL';
 
     private const FLAG_EX = 'EX';
@@ -162,6 +163,22 @@ class Redis extends Cache
         }
 
         return $this->returnBoolean($this->redis->set($key, $value, self::FLAG_EX, $duration, self::FLAG_NX));
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function addValues($data, $duration)
+    {
+        if ($duration === 0) {
+            return $this->redis->command(self::COMMAND_MSETNX, [$data]);
+        }
+
+        return $this->redis->pipeline(static function ($pipe) use ($duration, $data) {
+            foreach ($data as $key => $value) {
+                $pipe->set($key, $value, [self::FLAG_EX => $duration, self::FLAG_NX]);
+            }
+        });
     }
 
     /**
