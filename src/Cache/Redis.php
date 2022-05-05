@@ -148,7 +148,7 @@ class Redis extends Cache
 
         return $this->redis->pipeline(static function ($pipe) use ($duration, $data) {
             foreach ($data as $key => $value) {
-                $pipe->setEx($key, $duration, $value);
+                $pipe->set($key, $value, [self::FLAG_EX => $duration]);
             }
         });
     }
