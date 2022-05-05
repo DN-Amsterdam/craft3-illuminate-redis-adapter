@@ -1,5 +1,9 @@
 <?php
 
+/**
+ * @author Ezra Pool <ezra@digitalnatives.nl>
+ */
+
 declare(strict_types=1);
 
 namespace DigitalNatives\Cache;
@@ -140,6 +144,9 @@ class Redis extends Cache
         return $this->returnBoolean($this->redis->set($key, $value, self::FLAG_EX, $duration));
     }
 
+    /**
+     * @inheritdoc
+     */
     protected function setValues($data, $duration)
     {
         if ($duration === 0) {
