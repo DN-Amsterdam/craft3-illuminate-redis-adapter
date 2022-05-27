@@ -1,11 +1,17 @@
 # craft3-illuminate-redis-adapter
 Redis Cache based on Illuminate redis for CraftCMS 3
 
-# Choose an adapter
-## PHPredis (recommended)
+# Installation
+You can install this package using composer;
+```
+composer require digitalnatives/craft3-illuminate-redis-adapter
+```
+
+## Choose an adapter
+### PHPredis (recommended)
 For best performance we recommend using ext-phpredis
 
-## Config
+#### Config
 ~~~php
 return [
     'components' => [
@@ -26,10 +32,15 @@ return [
 ];
 ~~~
 
-## predis
+### predis
 When installing php extensions is not an option, predis is a very good option.
 
-## Config
+If you haven't installed predis, install it using composer;
+```
+composer require predis/predis
+```
+
+#### Config
 ~~~php
 return [
     'components' => [
