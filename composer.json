@@ -18,8 +18,8 @@
         "source": "https://github.com/DN-Amsterdam/craft3-illuminate-redis-adapter/"
     },
     "require": {
-        "php": ">=7.4.0",
-        "illuminate/redis": "^8.0",
+        "php": ">=7.4.0 || ^8.0",
+        "illuminate/redis": "^8.0 || ^9.0",
         "craftcms/cms": "^3.0 || ^4.0"
     },
     "require-dev": {
