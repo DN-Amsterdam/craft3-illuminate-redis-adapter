@@ -67,6 +67,11 @@ class Redis extends Cache
             (int)($this->config['retryInterval'] ?? 0),
             (float)($this->config['readTimeout'] ?? 0.0)
         );
+
+        if (isset($this->config['password'])) {
+            $redis->auth($this->config['password']);
+        }
+
         $redis->select((int)($this->config['database'] ?? 0));
         $redis->setOption(\Redis::OPT_SERIALIZER, $this->config['serializer'] ?? \Redis::SERIALIZER_NONE);
 
