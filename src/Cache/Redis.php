@@ -35,8 +35,14 @@ class Redis extends Cache
     private const STATUS_OK = 'OK';
 
     public string $connection = 'phpredis';
+
+    /** @var array{host?: string, port?: int, timeout?: int, retryInterval?: int, readTimeout?: float, password?: string, database?: int, serializer?: int} */
     public array $config = [];
+
+    /** @var array{scheme?: string, host?: string, port?: int, ssl?: array{cafile: string, verify_peer: bool}} */
     public array $params = [];
+
+    /** @var array{prefix?: string, exceptions?: bool, connections?: array, cluster?: string|callable, replication?: string|callable, aggregate?: callable, parameters?: array, commands?: string} */
     public array $options = [];
 
     /**
@@ -58,6 +64,7 @@ class Redis extends Cache
      * Get a phpredis connection object.
      *
      * @return \Redis
+     * @throws \RedisException
      */
     private function getPhpRedis(): \Redis
     {
@@ -66,7 +73,7 @@ class Redis extends Cache
             (string)($this->config['host'] ?? '127.0.0.1'),
             (int)($this->config['port'] ?? 6379),
             (int)($this->config['timeout'] ?? 0),
-            $this->config['timeout'] ?? null,
+            null,
             (int)($this->config['retryInterval'] ?? 0),
             (float)($this->config['readTimeout'] ?? 0.0)
         );
@@ -85,32 +92,28 @@ class Redis extends Cache
      * Get a redis connection object depending on the config.
      *
      * @return Connection
+     * @throws \RedisException
      */
     private function connection(): Connection
     {
-        switch ($this->connection) {
-            case 'predis':
-                return new PredisConnection(
-                    new Client($this->params, $this->options)
-                );
-            case 'predisCluster':
-                return new PredisClusterConnection(
-                    new Client($this->params, $this->options)
-                );
-            case 'phpredisCluster':
-                return new PhpRedisClusterConnection(
-                    $this->getPhpRedis(),
-                    null,
-                    $this->config
-                );
-            case 'phpredis':
-            default:
-                return new PhpRedisConnection(
-                    $this->getPhpRedis(),
-                    null,
-                    $this->config
-                );
-        }
+        return match ($this->connection) {
+            'predis' => new PredisConnection(
+                new Client($this->params, $this->options)
+            ),
+            'predisCluster' => new PredisClusterConnection(
+                new Client($this->params, $this->options)
+            ),
+            'phpredisCluster' => new PhpRedisClusterConnection(
+                $this->getPhpRedis(),
+                null,
+                $this->config
+            ),
+            default => new PhpRedisConnection(
+                $this->getPhpRedis(),
+                null,
+                $this->config
+            ),
+        };
     }
 
     /**
@@ -131,6 +134,9 @@ class Redis extends Cache
 
     /**
      * @inheritdoc
+     *
+     * @param string[] $keys a list of keys identifying the cached values
+     * @throws \RedisException
      */
     protected function getValues($keys): array
     {
@@ -154,6 +160,10 @@ class Redis extends Cache
 
     /**
      * @inheritdoc
+     *
+     * @param array<string, mixed> $data array where key corresponds to cache key while value is the value stored
+     * @return string[] array of failed keys
+     * @throws \RedisException
      */
     protected function setValues($data, $duration)
     {
@@ -182,8 +192,12 @@ class Redis extends Cache
 
     /**
      * @inheritdoc
+     *
+     * @param array<string, mixed> $data array where key corresponds to cache key while value is the value stored.
+     * @return string[] array of failed keys
+     * @throws \RedisException
      */
-    protected function addValues($data, $duration)
+    protected function addValues($data, $duration): array
     {
         if ($duration === 0) {
             return $this->redis->command(self::COMMAND_MSETNX, [$data]);
