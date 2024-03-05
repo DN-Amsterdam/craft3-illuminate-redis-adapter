@@ -8,6 +8,9 @@ declare(strict_types=1);
 
 namespace DigitalNatives\Cache;
 
+use Illuminate\Cache\PhpRedisLock;
+use Illuminate\Cache\RedisLock;
+use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Contracts\Redis\Connection;
 use Illuminate\Redis\Connections\PhpRedisClusterConnection;
 use Illuminate\Redis\Connections\PhpRedisConnection;
@@ -220,5 +223,23 @@ class Redis extends Cache
         }
 
         return (bool)$value;
+    }
+
+    /**
+     * Get a lock instance.
+     *
+     * @param string $name
+     * @param int $seconds
+     * @param string|null $owner
+     * @return Lock
+     */
+    public function lock(string $name, int $seconds = 0, ?string $owner = null): Lock
+    {
+        return match (true) {
+            $this->redis instanceof PhpRedisConnection =>
+                new PhpRedisLock($this->redis, $name, $seconds, $owner),
+            default =>
+                new RedisLock($this->redis, $name, $seconds, $owner),
+        };
     }
 }
