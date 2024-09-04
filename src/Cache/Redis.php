@@ -51,6 +51,13 @@ class Redis extends Cache
     private ?Connection $redis = null;
 
     /**
+     * fastMode slightly breaks compatibility for some commands in exchange for better
+     * performance. For example the setValues and addValues methods have a fastMode
+     * that does not check for failures.
+     */
+    private bool $fastMode = true;
+
+    /**
      * @inheritdoc
      */
     public function init(): void
@@ -161,21 +168,39 @@ class Redis extends Cache
     /**
      * @inheritdoc
      *
+     * This command has a fastMode when duration is set to 0, but won't return any failures.
+     *
      * @param array<string, mixed> $data array where key corresponds to cache key while value is the value stored
      * @return string[] array of failed keys
      * @throws \RedisException
      */
     protected function setValues($data, $duration)
     {
-        if ($duration === 0) {
-            return $this->redis->command(self::COMMAND_MSET, [$data]);
+        /**
+         * if the duration is zero and fastMode is enabled we
+         * use MSET to set all the values at once. This does mean
+         * that we can't figure out what keys failed if any.
+         */
+        if ($this->fastMode && $duration === 0) {
+            $this->redis->command(self::COMMAND_MSET, [$data]);
+            return [];
         }
 
-        return $this->redis->pipeline(static function ($pipe) use ($duration, $data) {
-            foreach ($data as $key => $value) {
-                $pipe->set($key, $value, [self::FLAG_EX => $duration]);
-            }
-        });
+        if ($duration === 0) {
+            $results = $this->redis->pipeline(static function ($pipe) use ($data) {
+                foreach ($data as $key => $value) {
+                    $pipe->set($key, $value);
+                }
+            });
+        } else {
+            $results = $this->redis->pipeline(static function ($pipe) use ($duration, $data) {
+                foreach ($data as $key => $value) {
+                    $pipe->set($key, $value, [self::FLAG_EX => $duration]);
+                }
+            });
+        }
+
+        return $this->findFailues($results, $data);
     }
 
     /**
@@ -193,21 +218,39 @@ class Redis extends Cache
     /**
      * @inheritdoc
      *
+     * This command has a fastMode when duration is set to 0, but won't return any failures.
+     *
      * @param array<string, mixed> $data array where key corresponds to cache key while value is the value stored.
      * @return string[] array of failed keys
      * @throws \RedisException
      */
     protected function addValues($data, $duration): array
     {
-        if ($duration === 0) {
-            return $this->redis->command(self::COMMAND_MSETNX, [$data]);
+        /**
+         * if the duration is zero and fastMode is enabled we
+         * use MSETNX to set all the values at once. This does mean
+         * that we can't figure out what keys failed if any.
+         */
+        if ($this->fastMode && $duration === 0) {
+            $this->redis->command(self::COMMAND_MSETNX, [$data]);
+            return [];
         }
 
-        return $this->redis->pipeline(static function ($pipe) use ($duration, $data) {
-            foreach ($data as $key => $value) {
-                $pipe->set($key, $value, [self::FLAG_EX => $duration, self::FLAG_NX]);
-            }
-        });
+        if ($duration === 0) {
+            $results = $this->redis->pipeline(static function ($pipe) use ($data) {
+                foreach ($data as $key => $value) {
+                    $pipe->set($key, $value, [self::FLAG_NX]);
+                }
+            });
+        } else {
+            $results = $this->redis->pipeline(static function ($pipe) use ($duration, $data) {
+                foreach ($data as $key => $value) {
+                    $pipe->set($key, $value, [self::FLAG_EX => $duration, self::FLAG_NX]);
+                }
+            });
+        }
+
+        return $this->findFailues($results, $data);
     }
 
     /**
@@ -240,6 +283,28 @@ class Redis extends Cache
     }
 
     /**
+     * Find any failed keys in the request.
+     *
+     * @param bool[] $results
+     * @param array<string, mixed> $data
+     *
+     * @return string[]
+     */
+    private function findFailues(array $results, array $data): array
+    {
+        // fetch the keys from the data array.
+        $keys = array_keys($data);
+
+        // filter all the failures (FALSE)
+        $failed = array_filter($results, static fn($value) => !$value);
+
+        // find the keys that associate with the index from the pipeline.
+        return array_map(static function ($index) use ($keys) {
+            return $keys[$index];
+        }, array_keys($failed));
+    }
+
+    /**
      * Get a lock instance.
      *
      * @param string $name
@@ -251,9 +316,9 @@ class Redis extends Cache
     {
         return match (true) {
             $this->redis instanceof PhpRedisConnection =>
-                new PhpRedisLock($this->redis, $name, $seconds, $owner),
+            new PhpRedisLock($this->redis, $name, $seconds, $owner),
             default =>
-                new RedisLock($this->redis, $name, $seconds, $owner),
+            new RedisLock($this->redis, $name, $seconds, $owner),
         };
     }
 }
